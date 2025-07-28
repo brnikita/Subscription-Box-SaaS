@@ -3,31 +3,34 @@
 ## 1. Project Overview
 
 ### 1.1 Purpose
-A minimalistic subscription box management platform MVP that can be built and run locally in a single day, with core subscription and payment simulation features.
+A minimalistic subscription box management platform MVP that can be built and run locally in a single day, with core subscription and payment simulation features using separate frontend and backend applications.
 
 ### 1.2 Core Objectives
 - Basic customer subscription management
 - Simulated payment processing (with Stripe fallback)
 - Simple admin panel for basic operations
 - Local development environment only
+- Separate frontend and backend applications
 
 ## 2. Technical Architecture
 
 ### 2.1 Technology Stack
 
 **Frontend:**
-- **Framework:** Next.js 14 (React 18)
+- **Framework:** React 18 with Vite
 - **Styling:** Tailwind CSS
 - **State Management:** React useState/useContext
 - **Forms:** Basic React forms with validation
-- **HTTP Client:** Native fetch
+- **HTTP Client:** Axios
+- **Routing:** React Router DOM
 
 **Backend:**
 - **Runtime:** Node.js 18+
-- **Framework:** Next.js API routes (full-stack approach)
-- **Authentication:** Simple session-based auth
+- **Framework:** Express.js
+- **Authentication:** JWT tokens
 - **Validation:** Basic JavaScript validation
 - **File Upload:** Local file system storage
+- **CORS:** Express CORS middleware
 
 **Database:**
 - **Primary:** SQLite (local file-based database)
@@ -45,10 +48,11 @@ A minimalistic subscription box management platform MVP that can be built and ru
 - **Environment:** Docker optional, Node.js direct
 
 ### 2.2 Architecture Pattern
-- **Pattern:** Next.js full-stack application
-- **API Design:** Next.js API routes
-- **Authentication:** Session-based with cookies
+- **Pattern:** Separate frontend and backend applications
+- **API Design:** RESTful APIs with Express.js
+- **Authentication:** JWT-based authentication
 - **Database:** Single SQLite file
+- **Communication:** HTTP REST APIs between frontend and backend
 
 ## 3. Database Schema (SQLite)
 
@@ -121,13 +125,14 @@ CREATE TABLE payments (
 );
 ```
 
-## 4. API Specifications (Next.js API Routes)
+## 4. API Specifications (Express.js REST APIs)
 
 ### 4.1 Authentication
 ```
 POST /api/auth/register
 POST /api/auth/login
 POST /api/auth/logout
+GET /api/auth/me
 ```
 
 ### 4.2 Customer
@@ -153,7 +158,7 @@ GET /api/admin/customers
 GET /api/admin/subscriptions
 GET /api/admin/products
 POST /api/admin/products
-PUT /api/admin/products/[id]
+PUT /api/admin/products/:id
 ```
 
 ### 4.5 Payments (Mock)
@@ -166,7 +171,7 @@ GET /api/payments/history
 
 ### 5.1 User Authentication
 - **Registration:** Email/password only
-- **Login:** Session-based authentication
+- **Login:** JWT-based authentication
 - **Roles:** Customer vs Admin (hardcoded admin user)
 
 ### 5.2 Customer Dashboard
@@ -198,61 +203,92 @@ GET /api/payments/history
 
 ## 6. Implementation Plan (Single Day)
 
-### 6.1 Phase 1: Setup (1-2 hours)
-1. Create Next.js project
+### 6.1 Phase 1: Backend Setup (1-2 hours)
+1. Create Express.js project
 2. Setup SQLite database
 3. Create basic database schema
 4. Setup environment variables
+5. Implement authentication middleware
 
-### 6.2 Phase 2: Authentication (1-2 hours)
-1. Implement registration/login
-2. Session management
-3. Basic middleware
+### 6.2 Phase 2: API Development (2-3 hours)
+1. Authentication endpoints
+2. Customer management APIs
+3. Subscription management APIs
+4. Admin APIs
+5. Mock payment system
 
-### 6.3 Phase 3: Core Features (2-3 hours)
-1. Customer dashboard
-2. Subscription management
-3. Mock payment system
+### 6.3 Phase 3: Frontend Setup (1-2 hours)
+1. Create React project with Vite
+2. Setup routing with React Router
+3. Configure Tailwind CSS
+4. Create basic components
 
-### 6.4 Phase 4: Admin & Polish (1-2 hours)
-1. Basic admin panel
-2. Landing page
-3. Styling with Tailwind
+### 6.4 Phase 4: Frontend Features (1-2 hours)
+1. Landing page
+2. Authentication pages
+3. Customer dashboard
+4. Admin panel
 
 ## 7. Development Environment
 
-### 7.1 Local Setup
+### 7.1 Backend Setup
 ```bash
-# Create project
-npx create-next-app@latest subscription-box --typescript --tailwind --app
-cd subscription-box
+# Create backend project
+mkdir subscription-box-backend
+cd subscription-box-backend
+npm init -y
 
 # Install dependencies
-npm install better-sqlite3 bcryptjs jsonwebtoken
+npm install express cors helmet morgan bcryptjs jsonwebtoken better-sqlite3 dotenv
+
+# Install dev dependencies
+npm install -D nodemon
 
 # Setup database
 node scripts/init-db.js
 
-# Run development
+# Run development server
 npm run dev
 ```
 
-### 7.2 Environment Variables (.env.local)
+### 7.2 Frontend Setup
+```bash
+# Create frontend project
+npm create vite@latest subscription-box-frontend -- --template react
+cd subscription-box-frontend
+
+# Install dependencies
+npm install
+npm install axios react-router-dom
+
+# Install Tailwind CSS
+npm install -D tailwindcss postcss autoprefixer
+npx tailwindcss init -p
+
+# Run development server
+npm run dev
+```
+
+### 7.3 Backend Environment Variables (.env)
 ```env
+# Server Configuration
+PORT=5000
+NODE_ENV=development
+
 # Database
 DATABASE_PATH=./data/app.db
 
 # Authentication
 JWT_SECRET=your-local-jwt-secret-key-here
-SESSION_SECRET=your-session-secret-here
+JWT_EXPIRES_IN=24h
+
+# CORS
+FRONTEND_URL=http://localhost:3000
 
 # Payment (Optional - for future Stripe integration)
 STRIPE_SECRET_KEY=sk_test_your_key_here
-STRIPE_PUBLISHABLE_KEY=pk_test_your_key_here
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_key_here
 
 # App Configuration
-NEXT_PUBLIC_APP_URL=http://localhost:3000
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=admin123
 
@@ -260,73 +296,105 @@ ADMIN_PASSWORD=admin123
 MOCK_PAYMENTS=true
 ```
 
-### 7.3 Environment Template (.env.example)
+### 7.4 Frontend Environment Variables (.env)
 ```env
-# Database
-DATABASE_PATH=./data/app.db
-
-# Authentication
-JWT_SECRET=generate-a-random-secret-key
-SESSION_SECRET=generate-another-random-secret
-
-# Payment (Optional)
-STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
-STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
+# API Configuration
+VITE_API_URL=http://localhost:5000/api
 
 # App Configuration
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-ADMIN_EMAIL=admin@example.com
-ADMIN_PASSWORD=secure_admin_password
+VITE_APP_URL=http://localhost:3000
 
-# Features
-MOCK_PAYMENTS=true
+# Payment (Optional)
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_your_key_here
 ```
 
 ## 8. File Structure
+
+### 8.1 Backend Structure
 ```
-subscription-box/
+backend/
 ├── src/
-│   ├── app/
-│   │   ├── api/
-│   │   │   ├── auth/
-│   │   │   ├── customer/
-│   │   │   ├── admin/
-│   │   │   ├── plans/
-│   │   │   └── payments/
-│   │   ├── dashboard/
-│   │   ├── admin/
-│   │   └── page.tsx (landing)
-│   ├── components/
-│   │   ├── ui/
-│   │   ├── auth/
-│   │   └── dashboard/
+│   ├── controllers/
+│   │   ├── authController.js
+│   │   ├── customerController.js
+│   │   ├── adminController.js
+│   │   ├── planController.js
+│   │   └── paymentController.js
+│   ├── middleware/
+│   │   ├── auth.js
+│   │   ├── admin.js
+│   │   └── validation.js
+│   ├── routes/
+│   │   ├── auth.js
+│   │   ├── customer.js
+│   │   ├── admin.js
+│   │   ├── plans.js
+│   │   └── payments.js
 │   ├── lib/
 │   │   ├── db.js
-│   │   ├── auth.js
 │   │   └── utils.js
-│   └── types/
-├── data/
-│   └── app.db (SQLite)
+│   └── app.js
 ├── scripts/
 │   └── init-db.js
-├── .env.local
+├── data/
+│   └── app.db (SQLite)
+├── .env
 ├── .env.example
-└── package.json
+├── package.json
+└── server.js
+```
+
+### 8.2 Frontend Structure
+```
+frontend/
+├── src/
+│   ├── components/
+│   │   ├── common/
+│   │   │   ├── Header.jsx
+│   │   │   ├── Footer.jsx
+│   │   │   └── Loading.jsx
+│   │   ├── auth/
+│   │   │   ├── LoginForm.jsx
+│   │   │   └── RegisterForm.jsx
+│   │   ├── dashboard/
+│   │   │   ├── CustomerDashboard.jsx
+│   │   │   ├── SubscriptionCard.jsx
+│   │   │   └── PlanSelector.jsx
+│   │   └── admin/
+│   │       ├── AdminDashboard.jsx
+│   │       └── StatsCard.jsx
+│   ├── pages/
+│   │   ├── Home.jsx
+│   │   ├── Login.jsx
+│   │   ├── Register.jsx
+│   │   ├── Dashboard.jsx
+│   │   └── Admin.jsx
+│   ├── services/
+│   │   └── api.js
+│   ├── context/
+│   │   └── AuthContext.jsx
+│   ├── App.jsx
+│   └── main.jsx
+├── public/
+├── .env
+├── package.json
+├── tailwind.config.js
+└── vite.config.js
 ```
 
 ## 9. Deployment Strategy (Local Only)
 
 ### 9.1 Local Development
+- **Backend:** Express server on port 5000
+- **Frontend:** Vite dev server on port 3000
 - **Database:** SQLite file in `./data/` directory
 - **Files:** Local filesystem storage
-- **Environment:** Node.js development server
 
 ### 9.2 Production Considerations (Future)
+- **Backend:** Deploy to Railway/Render/Heroku
+- **Frontend:** Deploy to Vercel/Netlify
 - **Database:** Migrate to PostgreSQL
-- **Hosting:** Vercel/Netlify when ready
 - **Payments:** Enable real Stripe integration
-- **Storage:** Cloud storage for files
 
 ## 10. Mock Payment System
 
@@ -374,7 +442,9 @@ const processPayment = async (amount) => {
 - ✅ Simple SQLite database
 - ✅ Environment variables for configuration
 - ✅ Mock payment system with Stripe fallback
+- ✅ Separate frontend and backend applications
+- ✅ RESTful API communication
 
 ---
 
-This minimalistic specification is designed for rapid development using AI assistance, focusing on core functionality that can be implemented in a single day while maintaining the ability to scale up later. 
+This minimalistic specification is designed for rapid development using AI assistance, focusing on core functionality that can be implemented in a single day with separate frontend and backend applications while maintaining the ability to scale up later. 
