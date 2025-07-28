@@ -41,7 +41,7 @@ class PaymentController {
       }
 
       // Simulate payment processing
-      const paymentResult = this.simulatePayment(amount);
+      const paymentResult = PaymentController.simulatePayment(amount);
 
       if (!paymentResult.success) {
         return res.status(400).json({ error: 'Payment failed' });

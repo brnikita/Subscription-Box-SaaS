@@ -61,6 +61,7 @@ export const customerAPI = {
 
 // Payment API
 export const paymentAPI = {
+  processPayment: (data) => api.post('/payments/simulate', data),
   simulatePayment: (data) => api.post('/payments/simulate', data),
   getPaymentHistory: () => api.get('/payments/history'),
 };
