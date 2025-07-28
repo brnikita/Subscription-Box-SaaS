@@ -126,14 +126,24 @@ export default function Dashboard() {
 
   const handlePlanChange = async (newPlanId) => {
     const newPlan = plans.find(p => p.id === newPlanId);
-    if (!newPlan || !window.confirm(`Change to ${newPlan.name} plan for $${newPlan.price}/${newPlan.billing_interval}?`)) {
+    if (!newPlan) return;
+
+    // Different confirmation messages for new vs existing subscriptions
+    const isNewSubscription = !subscription;
+    const confirmMessage = isNewSubscription 
+      ? `Subscribe to ${newPlan.name} plan for $${newPlan.price}/${newPlan.billing_interval}?`
+      : `Change to ${newPlan.name} plan for $${newPlan.price}/${newPlan.billing_interval}?`;
+    
+    if (!window.confirm(confirmMessage)) {
       return;
     }
 
     setActionLoading('plan-change');
     try {
-      // Cancel current subscription
-      await customerAPI.cancelSubscription();
+      // Cancel current subscription only if one exists
+      if (!isNewSubscription) {
+        await customerAPI.cancelSubscription();
+      }
       
       // Create new subscription
       const response = await paymentAPI.processPayment({
@@ -142,13 +152,18 @@ export default function Dashboard() {
       });
 
       if (response.data.success) {
-        alert(`Successfully changed to ${newPlan.name} plan!`);
+        const successMessage = isNewSubscription 
+          ? `Successfully subscribed to ${newPlan.name} plan!`
+          : `Successfully changed to ${newPlan.name} plan!`;
+        alert(successMessage);
         setShowPlanChange(false);
         await fetchSubscription();
         await fetchPayments();
+        await fetchOrders(); // Refresh orders too
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.error || 'Failed to change plan';
+      const actionText = isNewSubscription ? 'subscribe to plan' : 'change plan';
+      const errorMessage = error.response?.data?.error || `Failed to ${actionText}`;
       alert(errorMessage);
     } finally {
       setActionLoading('');
@@ -367,14 +382,31 @@ export default function Dashboard() {
                   )}
                 </div>
               ) : (
-                <div className="text-center py-6">
-                  <p className="text-gray-600 mb-4">You don't have an active subscription yet.</p>
-                  <a
-                    href="/"
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                  >
-                    Browse Plans
-                  </a>
+                <div className="py-6">
+                  <div className="text-center mb-6">
+                    <p className="text-gray-600 mb-4">You don't have an active subscription yet.</p>
+                    <p className="text-sm text-gray-500">Choose a plan below to get started:</p>
+                  </div>
+                  
+                  {/* Available Plans */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {plans.map((plan) => (
+                      <div key={plan.id} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+                        <h4 className="font-medium text-gray-900 mb-2">{plan.name}</h4>
+                        <p className="text-sm text-gray-600 mb-3">{plan.description}</p>
+                        <p className="text-lg font-semibold text-gray-900 mb-4">
+                          ${plan.price}/{plan.billing_interval}
+                        </p>
+                        <button
+                          onClick={() => handlePlanChange(plan.id)}
+                          disabled={actionLoading === 'plan-change'}
+                          className="w-full px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+                        >
+                          {actionLoading === 'plan-change' ? 'Subscribing...' : 'Subscribe to This Plan'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
