@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { paymentAPI } from '../services/api';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -12,8 +13,17 @@ export default function Register() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState(null);
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check if a plan was pre-selected
+    const planData = localStorage.getItem('selectedPlan');
+    if (planData) {
+      setSelectedPlan(JSON.parse(planData));
+    }
+  }, []);
 
   const handleChange = (e) => {
     setFormData({
@@ -33,17 +43,39 @@ export default function Register() {
 
     setLoading(true);
 
-    const result = await register({
-      first_name: formData.first_name,
-      last_name: formData.last_name,
-      email: formData.email,
-      password: formData.password,
-    });
-    
-    if (result.success) {
-      navigate('/dashboard');
-    } else {
-      setError(result.error);
+    try {
+      const result = await register({
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        password: formData.password,
+      });
+      
+      if (result.success) {
+        // If there's a pre-selected plan, subscribe to it
+        if (selectedPlan) {
+          try {
+            const subscriptionResponse = await paymentAPI.processPayment({
+              plan_id: selectedPlan.id,
+              amount: selectedPlan.price
+            });
+
+            if (subscriptionResponse.data.success) {
+              localStorage.removeItem('selectedPlan');
+              alert(`Welcome! You've been successfully subscribed to ${selectedPlan.name}.`);
+            }
+          } catch (subscriptionError) {
+            console.error('Auto-subscription failed:', subscriptionError);
+            // Still navigate to dashboard even if subscription fails
+            alert('Registration successful! Please select a plan from your dashboard.');
+          }
+        }
+        navigate('/dashboard');
+      } else {
+        setError(result.error);
+      }
+    } catch (error) {
+      setError('Registration failed. Please try again.');
     }
     
     setLoading(false);
@@ -64,6 +96,25 @@ export default function Register() {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        {selectedPlan && (
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-blue-900 mb-2">
+                Selected Plan: {selectedPlan.name}
+              </h3>
+              <p className="text-blue-700 text-sm mb-2">
+                {selectedPlan.description}
+              </p>
+              <p className="text-xl font-bold text-blue-900">
+                ${selectedPlan.price}/{selectedPlan.billing_interval}
+              </p>
+              <p className="text-blue-600 text-sm mt-2">
+                You'll be automatically subscribed after registration
+              </p>
+            </div>
+          </div>
+        )}
+        
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (

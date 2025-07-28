@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { plansAPI } from '../services/api';
+import { Link, useNavigate } from 'react-router-dom';
+import { plansAPI, paymentAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function Home() {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [processingPayment, setProcessingPayment] = useState(null);
+  const { isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchPlans();
@@ -18,6 +22,36 @@ export default function Home() {
       console.error('Error fetching plans:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePlanSelection = async (plan) => {
+    if (!isAuthenticated()) {
+      // Store selected plan and redirect to register
+      localStorage.setItem('selectedPlan', JSON.stringify(plan));
+      navigate('/register');
+      return;
+    }
+
+    // Process subscription for authenticated users
+    try {
+      setProcessingPayment(plan.id);
+      
+      const response = await paymentAPI.processPayment({
+        plan_id: plan.id,
+        amount: plan.price
+      });
+
+      if (response.data.success) {
+        alert(`Successfully subscribed to ${plan.name}! Welcome to your new subscription.`);
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      console.error('Subscription error:', error);
+      const errorMessage = error.response?.data?.error || 'Failed to process subscription';
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      setProcessingPayment(null);
     }
   };
 
@@ -42,18 +76,34 @@ export default function Home() {
               <h1 className="text-2xl font-bold text-gray-900">BoxSubscribe</h1>
             </div>
             <div className="flex space-x-4">
-              <Link
-                to="/login"
-                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Login
-              </Link>
-              <Link
-                to="/register"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-              >
-                Get Started
-              </Link>
+              {isAuthenticated() ? (
+                <>
+                  <span className="text-gray-600 px-3 py-2 text-sm">
+                    Welcome, {user?.first_name}!
+                  </span>
+                  <Link
+                    to="/dashboard"
+                    className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Dashboard
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                  >
+                    Get Started
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -70,12 +120,14 @@ export default function Home() {
               Get curated subscription boxes delivered to your door. From beauty to tech, 
               we have the perfect box for everyone.
             </p>
-            <Link
-              to="/register"
-              className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-lg text-lg font-semibold inline-block"
-            >
-              Start Your Subscription
-            </Link>
+            {!isAuthenticated() && (
+              <Link
+                to="/register"
+                className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-lg text-lg font-semibold inline-block"
+              >
+                Start Your Subscription
+              </Link>
+            )}
           </div>
         </div>
       </section>
@@ -110,12 +162,26 @@ export default function Home() {
                       /{plan.billing_interval}
                     </span>
                   </div>
-                  <Link
-                    to="/register"
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold inline-block text-center"
+                  <button
+                    onClick={() => handlePlanSelection(plan)}
+                    disabled={processingPayment === plan.id}
+                    className={`w-full py-3 rounded-lg font-semibold text-center ${
+                      processingPayment === plan.id
+                        ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
                   >
-                    Choose This Plan
-                  </Link>
+                    {processingPayment === plan.id ? (
+                      <span className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Processing...
+                      </span>
+                    ) : isAuthenticated() ? (
+                      'Subscribe Now'
+                    ) : (
+                      'Choose This Plan'
+                    )}
+                  </button>
                 </div>
               </div>
             ))}
